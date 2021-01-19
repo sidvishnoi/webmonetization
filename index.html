@@ -20,7 +20,107 @@
         This document is based on the <a href="https://webmonetization.org/specification.html">Web Monetization Draft</a> and a <a href="https://github.com/sidvishnoi/gecko-webmonetization/">prototype implementation in Firefox</a>.
       </p>
     </section>
+    <section>
+      <h2>
+        Browser API
+      </h2>
+      <section>
+        <h2>
+          Extensions to the {{ Navigator }} interface
+        </h2>
+        <pre class="idl">
+        partial interface Navigator {
+          readonly attribute Monetization monetization;
+        };
+        </pre>
+        <p class="issue">
+          Not sure if Monetization interface makes more sense on `Navigator` or `Window`.
+        </p>
+      </section>
+      <section data-link-for="Monetization">
+        <h2>
+          `Monetization` interface
+        </h2>
+        <pre class="idl">
+        [Exposed=Window, SecureContext]
+        interface Monetization : EventTarget {
+          attribute EventHandler onprogress;
+        };
+        </pre>
+        <p>
+          The {{onprogress}} attribute is an {{EventHandler}} for a {{MonetizationProgressEvent/MonetizationProgressEvent}} named "progress".
+        </p>
+      </section>
+      <section data-dfn-for="MonetizationProgressEvent">
+        <h2>
+          `MonetizationProgressEvent`
+        </h2>
+        <pre class="idl">
+          [Exposed=Window, SecureContext]
+          interface MonetizationProgressEvent : Event {
+            readonly attribute USVString url;
+            readonly attribute DOMString amount;
+            readonly attribute DOMString assetCode;
+            readonly attribute unsigned long assetScale;
+            readonly attribute DOMString? receipt;
+          };
+        </pre>
+        <dl data-link-for="MonetizationProgressEvent">
+          <dt>
+            <dfn>url</dfn> attribute
+          </dt>
+          <dd>
+            A [[URL]] {{ URL/href }} representing receiver payment pointer for which the payment is completed.
+          </dd>
+          <dt>
+            <dfn>amount</dfn> attribute
+          </dt>
+          <dd>
+            The destination amount received as specified in the ILP packet.
+          </dd>
+          <dt>
+            <dfn>assetCode</dfn> attribute
+          </dt>
+          <dd>
+            A three letter asset code describing the amount's units. Currencies that have [[?ISO4217]] codes should use those.
+          </dd>
+          <dt>
+            <dfn>assetScale</dfn> attribute
+          </dt>
+          <dd>
+            <p>
+              The scale of the amount.
+            </p>
+            <p class="issue">
+              {{assetScale}} should probably be {{ octet }} as per <a href="https://github.com/interledger/rfcs/blob/2473d2963a/asn1/DynamicConfigurationProtocol.asn#L15">Interledger's DynamicConfigurationProtocol</a>.
+            </p>
+            <p class="example">
+              For example, USD would have an assetScale of 2 when denominated in cents.
+            </p>
+          </dd>
+          <dt>
+            <dfn>receipt</dfn> attribute
+          </dt>
+          <dd>
+            Base64-encoded [[[Receipt]]] issued by the Web Monetization receiver to the Web Monetization provider as proof of the total amount received in the stream.
+          </dd>
+        </dl>
+        <p class="issue" data-link-for="MonetizationProgressEvent" data-cite="payment-request">
+          Should we define either a `MonetizationCurrencyAmount` or use {{ PaymentCurrencyAmount }} to combine {{amount}}, {{assetCode}} and {{assetScale}}?
+        </p>
+      </section>
+      <pre class="example js" title="Monitor monetization progress.">
+        navigator.monetization.addEventListener("progress", async event =&gt; {
+          console.assert(event instanceof MonetizationProgressEvent);
 
+          const { amount, assetScale, assetCode, receipt } = event;
+          if (receipt) {
+            const isValid = await verifyPayment(receipt);
+          }
+          const paymentPointer = UrlToPaymentPointer(event.url);
+        });
+      </pre>
+    </section>
     <section id="conformance"></section>
   </body>
 </html>
