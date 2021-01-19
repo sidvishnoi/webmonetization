@@ -121,6 +121,97 @@
         });
       </pre>
     </section>
+    <section>
+      <h2>
+        Browser Extension API
+      </h2>
+      <pre class="idl">
+        [Exposed=Window]
+        interface BrowserMonetization {
+          readonly attribute BrowserMonetizationStartEvent onStart;
+          readonly attribute BrowserMonetizationGenericEvent onStop;
+          readonly attribute BrowserMonetizationGenericEvent onPause;
+          readonly attribute BrowserMonetizationGenericEvent onResume;
+
+          undefined completePayment(
+            DOMString sessionId,
+            MonetizationAmount amount,
+            DOMString? receipt
+          );
+
+          Promise&lt;DOMString?&gt; refresh(DOMString sessionId);
+        };
+
+        dictionary MonetizationAmount {
+          DOMString value;
+          DOMString assetCode;
+          unsigned long assetScale;
+        };
+      </pre>
+      <pre class="idl">
+        [Exposed=Window]
+        interface BrowserMonetizationStartEvent : BrowserExtEvent {
+          undefined addListener(BrowserMonetizationStartCallback callback);
+        };
+
+        callback BrowserMonetizationStartCallback = undefined (
+          DOMString    sessionId,
+          SpspResponse spspResponse
+        );
+
+        dictionary SpspResponse {
+          DOMString destinationAccount;
+          DOMString sharedSecret;
+          boolean   receiptsEnabled;
+        };
+      </pre>
+      <pre class="idl">
+        [Exposed=Window]
+        interface BrowserMonetizationGenericEvent : BrowserExtEvent {
+          undefined addListener(BrowserMonetizationGenericCallback callback);
+        };
+
+        callback BrowserMonetizationGenericCallback = undefined (DOMString sessionId);
+      </pre>
+      <p>
+        Where <dfn data-cite="browserext#dom-browserextevent" data-dfn-type="interface">BrowserExtEvent</dfn> is defined in [[[browserext]]].
+      </p>
+      <section class="informative">
+        <h2>
+          Browser Extension Example
+        </h2>
+        <pre class="example js" title="A sample extension background script.">
+          browser.monetization.onStart.addListener((sessionId, spspResponse) =&gt; {
+            // Start monetization: decide whether to make payments,
+            // check authentication, setup payments etc.
+
+            // Some time later, notify the browser for a completed payment:
+            browser.monetization.completePayment(sessionId, {
+              value: '60',
+              assetScale: 2,
+              assetCode: 'USD',
+            });
+          });
+
+          browser.monetization.onStop.addListener(sessionId =&gt; {
+            // Stop monetization for given sessionId.
+          });
+
+          browser.monetization.onPause.addListener(sessionId =&gt; {
+            // User might have navigated away, so pause the payments.
+            //  This is an optimization to avoid setting up new payments when
+            // the user switches between tabs, which can happen very often.
+          });
+
+          browser.monetization.onResume.addListener(sessionId =&gt; {
+            // Resume payments, as the user is back.
+
+            // If the spspResponse is no longer valid, request a new session:
+            const newSessionId = await browser.monetization.refresh(sessionId);
+          });
+        </pre>
+      </section>
+    </section>
     <section id="conformance"></section>
   </body>
 </html>
